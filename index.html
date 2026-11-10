@@ -25,13 +25,15 @@ tr.sec td{background:#f3e7da;font-weight:700}.sm{font-size:12px;color:#6b5b4b}.g
 h3{margin:.2em 0 .6em;color:var(--m)}.empty{color:#8a7a6a;padding:20px;text-align:center}
 .warn{background:#fff7d6;border:1px solid #e6d27a;padding:8px 10px;border-radius:8px;font-size:12.5px}
 @media print{header~.bar,.tabs,button,ul.st,aside{display:none!important}main{display:block}}
+#lg{position:fixed;inset:0;background:#faf6f1;display:flex;align-items:center;justify-content:center;z-index:9}body.in #lg{display:none}body:not(.in) .bar,body:not(.in) main{display:none}
 </style></head><body>
+<div id="lg"><div class="card" style="width:340px"><h3>Staff Login</h3><div class="f"><label>Email</label><input id="lem" type="email"></div><div class="f" style="margin-top:8px"><label>Password</label><input id="lpw" type="password" onkeydown="if(event.key=='Enter')login()"></div><button style="margin-top:10px;width:100%" onclick="login()">Sign in</button><p id="lerr" class="sm" style="color:#a00"></p></div></div>
 <header><h1>Continuous Assessment of Student Conduct Record</h1>
 <p>Ramakrishna Mission Polytechnic College · Ramakrishna Mission Students’ Home, Mylapore, Chennai</p></header>
 <div class="bar">
  <label>Course<select id="course"></select></label>
  <label>Year<select id="year"></select></label>
- <span style="flex:1"></span>
+ <span style="flex:1"></span><span id="stat" class="sm"></span><span id="who" class="sm"></span><button class="o" onclick="refresh()">↻ Refresh</button><button class="o" onclick="sb.auth.signOut().then(()=>location.reload())">Sign out</button>
  <button class="o" onclick="exportJSON()">Backup (JSON)</button>
  <button class="o" onclick="exportCSV()">Violations (CSV)</button>
  <button class="o" onclick="document.getElementById('imp').click()">Restore</button>
@@ -42,6 +44,8 @@ h3{margin:.2em 0 .6em;color:var(--m)}.empty{color:#8a7a6a;padding:20px;text-alig
 <input id="nn" placeholder="Name"><input id="nr" placeholder="Register No." style="margin-top:6px">
 <div style="display:flex;gap:6px;margin-top:6px"><button onclick="addStu()">Add</button><button class="o" onclick="bulk()">Paste list…</button></div></div></div></aside>
 <section id="view"></section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script>
 const COURSES={DME:"Diploma in Mechanical Engineering",DAE:"Diploma in Automobile Engineering",DCE:"Diploma in Computer Engineering"};
 const YEARS=["I","II","III"],KEY="rkm-conduct-v1";
@@ -70,8 +74,8 @@ const CASEF=[["Violation",[["cat","Category","s",Object.keys(VIOL)],["type","Typ
 ["Follow-up",[["fu","Follow-up required?","s",YN],["fudate","Follow-up date","date"],["fuby","Follow-up by","t"],["furesp","Student response","a"],["imp","Improvement status","s",["–","Improving","No change","Deteriorating"]],["further","Further guidance required","a"],["out","Final outcome","s",["Open","Positive reinforcement given","Case closed"]]]]];
 const SC=[["name","Student name"],["reg","Register No."],["dob","Date of birth"],["blood","Blood group"],["parent","Parent / guardian name"],["phone","Parent contact no."],["addr","Address"],["hostel","Hostel / Day scholar"],["mentor","Faculty mentor"]];
 const COMM=["Class Teacher","HOD","Mentor / Counsellor","Warden","Principal"];
-let DB=JSON.parse(localStorage.getItem(KEY)||'{"s":[]}'),S={c:"DME",y:"I",id:null,tab:"c"};
-const save=()=>localStorage.setItem(KEY,JSON.stringify(DB)),uid=()=>Math.random().toString(36).slice(2,10);
+let DB={s:[]},S={c:"DME",y:"I",id:null,tab:"c"},P=null,snap={},TM;
+const uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cur=()=>DB.s.find(x=>x.id==S.id),cls=()=>DB.s.filter(x=>x.c==S.c&&x.y==S.y).sort((a,b)=>a.name.localeCompare(b.name));
 document.getElementById("course").innerHTML=Object.entries(COURSES).map(([k,v])=>`<option value="${k}">${k} – ${v}</option>`).join("");
@@ -89,7 +93,7 @@ function draw(keep){const L=cls();document.getElementById("lh").textContent=`${S
 list.innerHTML=L.map((s,i)=>`<li class="${s.id==S.id?"on":""}" onclick="S.id='${s.id}';S.tab='c';draw()"><span>${i+1}. ${esc(s.name)}</span>${s.cases.length?`<span class="pill">${s.cases.length}</span>`:""}</li>`).join("")||'<div class="sm">No students yet.</div>';
 const s=cur();if(!s){view.innerHTML=`<div class="card empty">Select a student (or add one) to begin.<br><span class="sm">${COURSES[S.c]} · Year ${S.y}</span></div>`;return}
 const T=[["c","1. Student Conduct"],["m","2. Misconduct / Indiscipline Record"]];
-view.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>${esc(s.name)} <span class="sm">${S.c} · Year ${S.y}</span></h3><div><button class="o" onclick="print()">Print</button> <button class="x" onclick="delStu()">Delete student</button></div></div>
+view.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>${esc(s.name)} <span class="sm">${S.c} · Year ${S.y}</span></h3><div><button class="o" onclick="print()">Print</button> ${CAN()?'<button class="x" onclick="delStu()">Delete student</button>':''}</div></div>
 <div class="tabs">${T.map(t=>`<button class="${S.tab==t[0]?"on":""}" onclick="S.tab='${t[0]}';draw()">${t[1]}</button>`).join("")}</div>${S.tab=="c"?conduct(s):misc(s)}</div>`}
 function conduct(s){const st=stats(s),[g,gl]=grade(st.avg);
 return `<h3>A. Student particulars</h3><div class="g2">${SC.map(([k,l])=>fld(k=="name"||k=="reg"?k:"p."+k,l,"t",0,k=="name"||k=="reg"?s[k]:s.p[k])).join("")}</div>
@@ -114,6 +118,22 @@ const exportJSON=()=>dl("conduct-backup-"+new Date().toISOString().slice(0,10)+"
 function exportCSV(){const h=["Course","Year","Student","Reg No","Category","Violation","Severity","Date","Place","Description","Warning","Warning type","Committee decision","Action","Parent","Follow-up","Status","Outcome"];
 const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[];DB.s.forEach(s=>s.cases.forEach(c=>rows.push([s.c,s.y,s.name,s.reg,c.cat,c.type,c.sev,c.date,c.place,c.desc,c.warn,c.wtype,c.decision,c.act,c.parent,c.fudate,c.imp,c.out].map(q).join(","))));
 dl("violations.csv","\ufeff"+[h.join(","),...rows].join("\n"),"text/csv")}
-function importJSON(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{const d=JSON.parse(t);if(!Array.isArray(d.s))throw 0;if(confirm("Replace current data with this backup?")){DB=d;save();draw()}}catch{alert("Invalid backup file")}})}
-draw();
+function importJSON(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{const d=JSON.parse(t);if(!Array.isArray(d.s))throw 0;if(confirm("Merge this backup into the database?")){d.s.forEach(x=>{const i=DB.s.findIndex(y=>y.id==x.id);i<0?DB.s.push(x):DB.s[i]=x});save();draw()}}catch{alert("Invalid backup file")}})}
+const sb=supabase.createClient(CFG.url,CFG.key),CAN=()=>P&&["admin","hod"].includes(P.role);
+function save(){if(!P)return;stat.textContent="Saving…";clearTimeout(TM);TM=setTimeout(sync,800)}
+async function sync(){const up=DB.s.filter(s=>snap[s.id]!==JSON.stringify(s)),ids=new Set(DB.s.map(s=>s.id)),del=Object.keys(snap).filter(i=>!ids.has(i));let err=null;
+if(up.length){const r=await sb.from("students").upsert(up.map(s=>({id:s.id,course:s.c,year:s.y,data:s})));err=r.error;if(!err)up.forEach(s=>snap[s.id]=JSON.stringify(s))}
+if(!err&&del.length){const r=await sb.from("students").delete().in("id",del);err=r.error;if(!err)del.forEach(i=>delete snap[i])}
+stat.textContent=err?"⚠ Not saved: "+err.message:"Saved ✓"}
+async function load(){const{data,error}=await sb.from("students").select("data").limit(1000);if(error){stat.textContent="⚠ "+error.message;return}
+DB.s=data.map(r=>r.data);snap={};DB.s.forEach(s=>snap[s.id]=JSON.stringify(s));stat.textContent="Loaded";draw()}
+const refresh=()=>{clearTimeout(TM);sync().then(load)};
+async function login(){lerr.textContent="";const{error}=await sb.auth.signInWithPassword({email:lem.value.trim(),password:lpw.value});if(error){lerr.textContent=error.message;return}lpw.value="";boot()}
+async function boot(){const{data:{session}}=await sb.auth.getSession();if(!session)return;
+const{data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle();
+if(!p){lerr.textContent="Your account has no role yet. Ask the administrator to assign one.";await sb.auth.signOut();return}
+P=p;document.body.classList.add("in");who.textContent=(p.name||session.user.email)+" · "+p.role+(p.course?" · "+p.course:"");
+if(p.course){S.c=p.course;course.innerHTML=`<option value="${p.course}">${p.course} – ${COURSES[p.course]}</option>`}
+await load()}
+boot();
 </script></body></html>
