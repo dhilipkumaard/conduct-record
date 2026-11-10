@@ -26,12 +26,17 @@ h3{margin:.2em 0 .6em;color:var(--m)}.empty{color:#8a7a6a;padding:20px;text-alig
 .warn{background:#fff7d6;border:1px solid #e6d27a;padding:8px 10px;border-radius:8px;font-size:12.5px}
 @media print{header~.bar,.tabs,button,ul.st,aside{display:none!important}main{display:block}}
 #lg{position:fixed;inset:0;background:#faf6f1;display:flex;align-items:center;justify-content:center;z-index:9}body.in #lg{display:none}body:not(.in) .bar,body:not(.in) main{display:none}
+main.d{grid-template-columns:1fr}main.d aside{display:none}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}.kp div{background:#fff;border:1px solid var(--b);border-radius:10px;padding:12px}.kp b{display:block;font-size:24px;color:var(--m)}.kp span{font-size:12px;color:#6b5b4b}
+.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.gr .card{margin:0}
+.br{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.bl{width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bt{flex:1;background:#f3e7da;border-radius:6px;height:12px}.bt i{display:block;height:100%;background:var(--m);border-radius:6px}
+.bd{display:inline-block;min-width:24px;text-align:center;border-radius:6px;padding:0 6px;font-weight:700;color:#fff}.gO{background:#2e7d32}.gA{background:#689f38}.gB{background:#f9a825}.gC{background:#ef6c00}.gD{background:#c62828}
 </style></head><body>
 <div id="lg"><div class="card" style="width:340px"><h3>Staff Login</h3><div class="f"><label>Email</label><input id="lem" type="email"></div><div class="f" style="margin-top:8px"><label>Password</label><input id="lpw" type="password" onkeydown="if(event.key=='Enter')login()"></div><button style="margin-top:10px;width:100%" onclick="login()">Sign in</button><p id="lerr" class="sm" style="color:#a00"></p></div></div>
 <header><h1>Continuous Assessment of Student Conduct Record</h1>
 <p>Ramakrishna Mission Polytechnic College · Ramakrishna Mission Students’ Home, Mylapore, Chennai</p></header>
 <div class="bar">
- <label>Course<select id="course"></select></label>
+ <button id="vD" onclick="V='d';draw()">📊 Dashboard</button><button id="vS" class="o" onclick="V='s';draw()">👥 Students</button><label>Course<select id="course"></select></label>
  <label>Year<select id="year"></select></label>
  <span style="flex:1"></span><span id="stat" class="sm"></span><span id="who" class="sm"></span><button class="o" onclick="refresh()">↻ Refresh</button><button class="o" onclick="sb.auth.signOut().then(()=>location.reload())">Sign out</button>
  <button class="o" onclick="exportJSON()">Backup (JSON)</button>
@@ -39,7 +44,7 @@ h3{margin:.2em 0 .6em;color:var(--m)}.empty{color:#8a7a6a;padding:20px;text-alig
  <button class="o" onclick="document.getElementById('imp').click()">Restore</button>
  <input type="file" id="imp" accept=".json" hidden onchange="importJSON(this)">
 </div>
-<main><aside><div class="card"><h3 id="lh">Students</h3><ul class="st" id="list"></ul>
+<main><aside><div class="card"><h3 id="lh">Students</h3><input id="q" placeholder="Search name / reg no…" oninput="draw()" style="margin-bottom:8px"><ul class="st" id="list"></ul>
 <hr style="border:0;border-top:1px solid var(--b)"><div class="f"><label>Add student</label>
 <input id="nn" placeholder="Name"><input id="nr" placeholder="Register No." style="margin-top:6px">
 <div style="display:flex;gap:6px;margin-top:6px"><button onclick="addStu()">Add</button><button class="o" onclick="bulk()">Paste list…</button></div></div></div></aside>
@@ -67,14 +72,14 @@ const VIOL={"Personal Discipline":["Late coming (classes/prayer/study/duties)","
 "Higher-Level Misconduct":["Ragging","Physical assault","Sexual harassment","Possession of prohibited or dangerous items","Serious damage to institutional property","Repeated violent behaviour","Drug or alcohol use"]};
 const SEV=["Level 1 – Minor / First occurrence (Faculty)","Level 2 – Moderate / Repeated (Mentor/Counsellor)","Level 3 – Severe / Persistent (Department Assessment Committee-I)","Level 4 – Critical / Serious or continued (Corrective Guidance Committee-II)"];
 const YN=["No","Yes"],WT=["Friendly advice","Personal counselling","Verbal warning","Written warning"];
-const CASEF=[["Violation",[["cat","Category","s",Object.keys(VIOL)],["type","Type of rule violation","v"],["sev","Nature / severity","s",SEV],["date","Date of violation","date"],["place","Place of occurrence","t"],["desc","Brief description (facts only)","a"]]],
+const CASEF=[["Violation",[["cat","Category","s",Object.keys(VIOL)],["type","Type of rule violation","v"],["sev","Nature / severity","s",SEV],["date","Date of violation","date"],["place","Place of occurrence","t"],["time","Time","t"],["rep","Reported by","t"],["wit","Witnesses","t"],["desc","Brief description (facts only)","a"]]],
 ["Warning given",[["warn","Warning given?","s",YN],["wtype","Type of warning","s",WT],["wdate","Date of warning","date"],["wby","Given by","t"],["wresp","Student response","a"]]],
 ["Corrective Guidance Committee decision",[["review","Committee review held?","s",YN],["guide","Guidance recommended","a"],["decision","Decision / recommendation","a"],["resp","Responsible person","t"],["ddate","Decision date","date"]]],
 ["Corrective action taken",[["act","Corrective action","a"],["couns","Counselling / guidance","a"],["parent","Parent / guardian communication","s",["Not required","Informed by phone","Called to institution","Letter sent"]],["refer","Referral to HOD / Principal","s",["No","HOD","Principal"]],["other","Other action (e.g. Suspension / TC – per institutional rules)","a"],["adate","Date of action","date"]]],
 ["Follow-up",[["fu","Follow-up required?","s",YN],["fudate","Follow-up date","date"],["fuby","Follow-up by","t"],["furesp","Student response","a"],["imp","Improvement status","s",["–","Improving","No change","Deteriorating"]],["further","Further guidance required","a"],["out","Final outcome","s",["Open","Positive reinforcement given","Case closed"]]]]];
-const SC=[["name","Student name"],["reg","Register No."],["dob","Date of birth"],["blood","Blood group"],["parent","Parent / guardian name"],["phone","Parent contact no."],["addr","Address"],["hostel","Hostel / Day scholar"],["mentor","Faculty mentor"]];
+const SC=[["name","Student name"],["reg","Register No."],["dob","Date of birth"],["blood","Blood group"],["parent","Parent / guardian name"],["phone","Parent contact no."],["addr","Address"],["hostel","Hostel / Day scholar"],["mentor","Faculty mentor"],["admyear","Year of admission"],["mobile","Student mobile"],["email","Student email"],["emerg","Emergency contact (name & no.)"],["room","Hostel room no."],["prev","Previous school / institution"],["interests","Interests / strengths"],["cocur","Co-curricular / club activities"],["notes","Special care notes (confidential)"]];
 const COMM=["Class Teacher","HOD","Mentor / Counsellor","Warden","Principal"];
-let DB={s:[]},S={c:"DME",y:"I",id:null,tab:"c"},P=null,snap={},TM;
+let DB={s:[]},S={c:"DME",y:"I",id:null,tab:"c",t:"Sem 1"},P=null,snap={},TM,V="d",F={c:"",y:"",t:"",from:"",to:""};const TERMS=["Sem 1","Sem 2","Sem 3","Sem 4","Sem 5","Sem 6"];const mig=s=>{if(s.r&&Object.keys(s.r).length&&!s.r2){s.r2={"Sem 1":s.r}}delete s.r;s.r2=s.r2||{};s.p=s.p||{};s.pos=s.pos||[];s.obs=s.obs||[];s.cases=s.cases||[];return s};
 const uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cur=()=>DB.s.find(x=>x.id==S.id),cls=()=>DB.s.filter(x=>x.c==S.c&&x.y==S.y).sort((a,b)=>a.name.localeCompare(b.name));
@@ -82,24 +87,36 @@ document.getElementById("course").innerHTML=Object.entries(COURSES).map(([k,v])=
 document.getElementById("year").innerHTML=YEARS.map(y=>`<option>${y}</option>`).join("");
 course.onchange=()=>{S.c=course.value;S.id=null;draw()};year.onchange=()=>{S.y=year.value;S.id=null;draw()};
 function addStu(){const n=nn.value.trim();if(!n)return;DB.s.push(mk(n,nr.value.trim()));nn.value=nr.value="";save();draw()}
-const mk=(name,reg)=>({id:uid(),c:S.c,y:S.y,name,reg,p:{},r:{},pos:[],obs:[],cases:[]});
+const mk=(name,reg)=>({id:uid(),c:S.c,y:S.y,name,reg,p:{},r2:{},pos:[],obs:[],cases:[]});
 function bulk(){const t=prompt("Paste student names, one per line (optional: 'Name, RegNo'):");if(!t)return;t.split("\n").map(l=>l.trim()).filter(Boolean).forEach(l=>{const[a,b]=l.split(",");DB.s.push(mk(a.trim(),(b||"").trim()))});save();draw()}
-function setp(path,v){const s=cur();const k=path.split(".");let o=s;k.slice(0,-1).forEach(x=>o=o[x]);o[k.at(-1)]=v;if(path=="name"||path=="reg"){s[path]=v}save()}
+function setp(path,v){const s=cur();const k=path.split(".");let o=s;k.slice(0,-1).forEach(x=>o=o[x]??={});o[k.at(-1)]=v;if(path=="name"||path=="reg"){s[path]=v}save()}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset.p){setp(t.dataset.p,t.value);if(t.dataset.r)draw(1)}});
 document.addEventListener("input",e=>{const t=e.target;if(t.dataset.p&&!t.dataset.r&&t.tagName!="SELECT")setp(t.dataset.p,t.value)});
 const fld=(p,l,t,o,v)=>`<div class="f"><label>${l}</label>${t=="a"?`<textarea rows="2" data-p="${p}">${esc(v)}</textarea>`:t=="s"?`<select data-p="${p}">${["",...o].map(x=>`<option${x==v?" selected":""}>${esc(x)}</option>`).join("")}</select>`:t=="v"?"":`<input type="${t=="date"?"date":"text"}" data-p="${p}" value="${esc(v)}">`}</div>`;
-function stats(s){let tot=0,n=0,secs=VALUES.map((sec,i)=>{let a=0,c=0;sec[1].forEach((_,j)=>{const r=+s.r[i+"-"+j];if(r){a+=r;c++}});tot+=a;n+=c;return[c?a/c:null,c]});return{secs,avg:n?tot/n:null,n}}
-function draw(keep){const L=cls();document.getElementById("lh").textContent=`${S.c} – Year ${S.y} (${L.length})`;
+function stats(s,t){const rs=t?[(s.r2||{})[t]||{}]:Object.values(s.r2||{});let tot=0,n=0,secs=VALUES.map((sec,i)=>{let a=0,c=0;sec[1].forEach((_,j)=>rs.forEach(R=>{const r=+R[i+"-"+j];if(r){a+=r;c++}}));tot+=a;n+=c;return[c?a/c:null,c]});return{secs,avg:n?tot/n:null,n}}
+function draw(keep){const L=cls().filter(s=>!q.value||(s.name+" "+(s.reg||"")).toLowerCase().includes(q.value.toLowerCase()));vD.className=V=="d"?"":"o";vS.className=V=="s"?"":"o";document.querySelector("main").className=V;if(V=="d"){view.innerHTML=dash();return}document.getElementById("lh").textContent=`${S.c} – Year ${S.y} (${L.length})`;
 list.innerHTML=L.map((s,i)=>`<li class="${s.id==S.id?"on":""}" onclick="S.id='${s.id}';S.tab='c';draw()"><span>${i+1}. ${esc(s.name)}</span>${s.cases.length?`<span class="pill">${s.cases.length}</span>`:""}</li>`).join("")||'<div class="sm">No students yet.</div>';
 const s=cur();if(!s){view.innerHTML=`<div class="card empty">Select a student (or add one) to begin.<br><span class="sm">${COURSES[S.c]} · Year ${S.y}</span></div>`;return}
 const T=[["c","1. Student Conduct"],["m","2. Misconduct / Indiscipline Record"]];
 view.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>${esc(s.name)} <span class="sm">${S.c} · Year ${S.y}</span></h3><div><button class="o" onclick="print()">Print</button> ${CAN()?'<button class="x" onclick="delStu()">Delete student</button>':''}</div></div>
 <div class="tabs">${T.map(t=>`<button class="${S.tab==t[0]?"on":""}" onclick="S.tab='${t[0]}';draw()">${t[1]}</button>`).join("")}</div>${S.tab=="c"?conduct(s):misc(s)}</div>`}
-function conduct(s){const st=stats(s),[g,gl]=grade(st.avg);
+function goS(id){const s=DB.s.find(x=>x.id==id);S.c=s.c;S.y=s.y;course.value=s.c;year.value=s.y;S.id=id;S.tab="c";V="s";draw()}
+function dash(){const A=DB.s.filter(s=>(!F.c||s.c==F.c)&&(!F.y||s.y==F.y)),inr=c=>(!F.from||(c.date||"")>=F.from)&&(!F.to||(c.date||"")<=F.to),cs=[];A.forEach(s=>s.cases.filter(inr).forEach(c=>cs.push({s,c})));
+const R=A.map(s=>({s,a:stats(s,F.t||null)})).filter(x=>x.a.avg!=null),av=R.length?R.reduce((t,x)=>t+x.a.avg,0)/R.length:null,today=new Date().toISOString().slice(0,10),
+open=cs.filter(x=>x.c.out!="Case closed"),due=open.filter(x=>x.c.fu=="Yes"&&x.c.fudate&&x.c.fudate<=today),
+cnt=(a,f)=>{const m={};a.forEach(x=>{const k=f(x)||"—";m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])},
+bar=r=>{const mx=Math.max(1,...r.map(x=>x[1]));return r.length?r.map(([k,v])=>`<div class="br"><span class="bl" title="${esc(k)}">${esc(k)}</span><div class="bt"><i style="width:${v/mx*100}%"></i></div><b>${v}</b></div>`).join(""):'<div class="sm">No data</div>'},
+sel=(k,l,o)=>`<label>${l}<select onchange="F.${k}=this.value;draw()">${o.map(x=>`<option value="${x[0]}"${F[k]==x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label>`,
+att=A.map(s=>({s,o:s.cases.filter(c=>inr(c)&&c.out!="Case closed").length,a:stats(s,F.t||null).avg})).filter(x=>x.o>=2||(x.a!=null&&x.a<2)).sort((p,r)=>r.o-p.o||(p.a??9)-(r.a??9)).slice(0,10);
+return `<div class="card"><div class="bar" style="padding:0;border:0;background:none">${sel("c","Course",[["","All courses"],...Object.keys(COURSES).map(k=>[k,k])])}${sel("y","Year",[["","All years"],...YEARS.map(y=>[y,y])])}${sel("t","Assessment term",[["","All terms"],...TERMS.map(t=>[t,t])])}<label>Violations from<input type="date" value="${F.from}" onchange="F.from=this.value;draw()"></label><label>to<input type="date" value="${F.to}" onchange="F.to=this.value;draw()"></label><span style="flex:1"></span><button class="o" onclick="print()">Print</button></div></div>
+<div class="kp"><div><b>${A.length}</b><span>Students</span></div><div><b>${cs.length}</b><span>Violations recorded</span></div><div><b>${new Set(cs.map(x=>x.s.id)).size}</b><span>Students with violations</span></div><div><b>${open.length}</b><span>Open cases</span></div><div><b>${due.length}</b><span>Follow-ups due</span></div><div><b>${av?av.toFixed(2)+" · "+grade(av)[0]:"–"}</b><span>Average conduct (${R.length} rated)</span></div></div>
+<div class="gr"><div class="card"><h3>Conduct grade distribution</h3>${bar(GR.map(g=>[g[1]+" – "+g[2],R.filter(x=>grade(x.a.avg)[0]==g[1]).length]))}</div><div class="card"><h3>Violations by category</h3>${bar(cnt(cs,x=>x.c.cat))}</div><div class="card"><h3>Top violation types</h3>${bar(cnt(cs,x=>x.c.type).slice(0,8))}</div><div class="card"><h3>By severity level</h3>${bar(cnt(cs,x=>(x.c.sev||"").slice(0,7)).sort())}</div><div class="card"><h3>Violations by month</h3>${bar(cnt(cs,x=>(x.c.date||"").slice(0,7)).sort())}</div><div class="card"><h3>By class</h3>${bar(cnt(cs,x=>x.s.c+" · Year "+x.s.y))}</div></div>
+<div class="card" style="margin-top:14px"><h3>Needs attention</h3><div class="sm" style="margin-bottom:6px">Students with 2+ open cases or conduct grade C/D</div>${att.length?`<table><tr><th>Student</th><th>Class</th><th>Open cases</th><th>Grade</th><th></th></tr>${att.map(x=>`<tr><td>${esc(x.s.name)}</td><td>${x.s.c} · ${x.s.y}</td><td>${x.o}</td><td>${x.a==null?"–":`<span class="bd g${grade(x.a)[0]}">${grade(x.a)[0]}</span>`}</td><td><button class="o" onclick="goS('${x.s.id}')">Open</button></td></tr>`).join("")}</table>`:'<div class="empty">Nobody needs attention for this filter.</div>'}</div>`}
+function conduct(s){const st=stats(s,S.t),[g,gl]=grade(st.avg);
 return `<h3>A. Student particulars</h3><div class="g2">${SC.map(([k,l])=>fld(k=="name"||k=="reg"?k:"p."+k,l,"t",0,k=="name"||k=="reg"?s[k]:s.p[k])).join("")}</div>
-<h3 style="margin-top:18px">B. Conduct assessment <span class="sm">(rate each value 1–5; teacher guidelines: see below)</span></h3>
+<div class="f" style="max-width:220px;margin-top:14px"><label>Assessment term</label><select onchange="S.t=this.value;draw()">${TERMS.map(x=>`<option${x==S.t?" selected":""}>${x}</option>`).join("")}</select></div><h3 style="margin-top:18px">B. Conduct assessment <span class="sm">(rate each value 1–5; teacher guidelines: see below)</span></h3>
 <div class="warn">Before rating: Have I listened? Understood the reason? Am I objective, correcting not merely criticising? Have I appreciated improvement, kept confidentiality and treated all students equally? One incident does not define character – rate on consistent patterns.</div>
-<div style="overflow:auto"><table style="margin-top:8px"><tr><th>#</th><th>Value</th><th>Rating (1=D … 5=O)</th></tr>${VALUES.map((sec,i)=>`<tr class="sec"><td colspan="2">${sec[0]}</td><td>${st.secs[i][0]?st.secs[i][0].toFixed(2)+" · "+grade(st.secs[i][0])[0]:"–"}</td></tr>`+sec[1].map((v,j)=>`<tr><td>${j+1}</td><td>${v}</td><td><select data-r="1" data-p="r.${i}-${j}" style="width:90px">${["","1","2","3","4","5"].map(x=>`<option${x==(s.r[i+"-"+j]||"")?" selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("")).join("")}</table></div>
+<div style="overflow:auto"><table style="margin-top:8px"><tr><th>#</th><th>Value</th><th>Rating (1=D … 5=O)</th></tr>${VALUES.map((sec,i)=>`<tr class="sec"><td colspan="2">${sec[0]}</td><td>${st.secs[i][0]?st.secs[i][0].toFixed(2)+" · "+grade(st.secs[i][0])[0]:"–"}</td></tr>`+sec[1].map((v,j)=>`<tr><td>${j+1}</td><td>${v}</td><td><select data-r="1" data-p="r2.${S.t}.${i}-${j}" style="width:90px">${["","1","2","3","4","5"].map(x=>`<option${x==(((s.r2||{})[S.t]||{})[i+"-"+j]||"")?" selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("")).join("")}</table></div>
 <div style="display:flex;gap:18px;align-items:center;margin:10px 0"><div class="grade">${g}</div><div>Overall average <b>${st.avg?st.avg.toFixed(2):"–"}</b> (${st.n}/29 rated) ${gl?"· "+gl:""}<div class="sm">Scale: O 4–5 · A 3–4 · B 2–3 · C 1–2 · D 0–1. Rating reflects conduct only – never a punishment for academic difficulty or personal circumstances.</div></div></div>
 <div class="g2">${fld("p.committee","Department committee members / assessed by","t",0,s.p.committee)}${fld("p.period","Assessment period","t",0,s.p.period)}</div>
 <h3 style="margin-top:18px">C. Positive conduct / appreciation</h3>${list2(s,"pos","Appreciation / achievement")}
@@ -118,7 +135,7 @@ const exportJSON=()=>dl("conduct-backup-"+new Date().toISOString().slice(0,10)+"
 function exportCSV(){const h=["Course","Year","Student","Reg No","Category","Violation","Severity","Date","Place","Description","Warning","Warning type","Committee decision","Action","Parent","Follow-up","Status","Outcome"];
 const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[];DB.s.forEach(s=>s.cases.forEach(c=>rows.push([s.c,s.y,s.name,s.reg,c.cat,c.type,c.sev,c.date,c.place,c.desc,c.warn,c.wtype,c.decision,c.act,c.parent,c.fudate,c.imp,c.out].map(q).join(","))));
 dl("violations.csv","\ufeff"+[h.join(","),...rows].join("\n"),"text/csv")}
-function importJSON(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{const d=JSON.parse(t);if(!Array.isArray(d.s))throw 0;if(confirm("Merge this backup into the database?")){d.s.forEach(x=>{const i=DB.s.findIndex(y=>y.id==x.id);i<0?DB.s.push(x):DB.s[i]=x});save();draw()}}catch{alert("Invalid backup file")}})}
+function importJSON(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{const d=JSON.parse(t);if(!Array.isArray(d.s))throw 0;if(confirm("Merge this backup into the database?")){d.s.forEach(x=>{mig(x);const i=DB.s.findIndex(y=>y.id==x.id);i<0?DB.s.push(x):DB.s[i]=x});save();draw()}}catch{alert("Invalid backup file")}})}
 const sb=supabase.createClient(CFG.url,CFG.key),CAN=()=>P&&["admin","hod"].includes(P.role);
 function save(){if(!P)return;stat.textContent="Saving…";clearTimeout(TM);TM=setTimeout(sync,800)}
 async function sync(){const up=DB.s.filter(s=>snap[s.id]!==JSON.stringify(s)),ids=new Set(DB.s.map(s=>s.id)),del=Object.keys(snap).filter(i=>!ids.has(i));let err=null;
@@ -126,13 +143,13 @@ if(up.length){const r=await sb.from("students").upsert(up.map(s=>({id:s.id,cours
 if(!err&&del.length){const r=await sb.from("students").delete().in("id",del);err=r.error;if(!err)del.forEach(i=>delete snap[i])}
 stat.textContent=err?"⚠ Not saved: "+err.message:"Saved ✓"}
 async function load(){const{data,error}=await sb.from("students").select("data").limit(1000);if(error){stat.textContent="⚠ "+error.message;return}
-DB.s=data.map(r=>r.data);snap={};DB.s.forEach(s=>snap[s.id]=JSON.stringify(s));stat.textContent="Loaded";draw()}
+DB.s=data.map(r=>mig(r.data));snap={};DB.s.forEach(s=>snap[s.id]=JSON.stringify(s));stat.textContent="Loaded";draw()}
 const refresh=()=>{clearTimeout(TM);sync().then(load)};
 async function login(){lerr.textContent="";const{error}=await sb.auth.signInWithPassword({email:lem.value.trim(),password:lpw.value});if(error){lerr.textContent=error.message;return}lpw.value="";boot()}
 async function boot(){const{data:{session}}=await sb.auth.getSession();if(!session)return;
 const{data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle();
 if(!p){lerr.textContent="Your account has no role yet. Ask the administrator to assign one.";await sb.auth.signOut();return}
-P=p;document.body.classList.add("in");who.textContent=(p.name||session.user.email)+" · "+p.role+(p.course?" · "+p.course:"");
+P=p;V=p.role=="teacher"?"s":"d";document.body.classList.add("in");who.textContent=(p.name||session.user.email)+" · "+p.role+(p.course?" · "+p.course:"");
 if(p.course){S.c=p.course;course.innerHTML=`<option value="${p.course}">${p.course} – ${COURSES[p.course]}</option>`}
 await load()}
 boot();
